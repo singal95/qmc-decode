@@ -4,7 +4,7 @@ CFLAGS?=-Wall -std=c11
 OBJS = src/main.o \
        src/qmc_crypto.o
 
-EXT?=.exe
+EXT?=
 
 OUT=qmc_crypto$(EXT)
 

@@ -1,4 +1,8 @@
 #include "qmc_crypto.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <string.h>
 
 #define OPTIMISE_CRYPTO (1)
 
@@ -53,6 +57,7 @@ void qmc_crypto_transform(uint8_t* data, unsigned int offset, size_t size)
 {
 	for (unsigned int i = 0; i < size; i++)
 	{
+	    // XOR
 		data[i] ^= qmc_crypto_encode(offset + i);
 	}
 }
@@ -71,4 +76,53 @@ uint8_t qmc_crypto_encode(unsigned int i)
 	unsigned int index = (offset * offset + /* 80923 & 0xFF = */ 27) & 0xFF;
 	return privKey[index];
 #endif
+}
+
+
+int encode_decode(char* arg1, char*arg2){
+    FILE* fIn = fopen(arg1, "rb");
+    if (fIn == NULL) {
+        printf("Could not open input file %s\n", arg1);
+        return 2;
+    }
+    FILE* fOut = fopen(arg2, "wb");
+    if (fOut == NULL) {
+        fclose(fIn);
+        printf("Could not open output file %s\n", arg2);
+        return 3;
+    }
+    fseek(fIn, 0 , SEEK_SET);
+
+    // memory allocate 1024*1024 Byte space on heap
+    uint8_t* buf = (uint8_t*)malloc(BUF_SIZE * sizeof(uint8_t));
+
+    // counter
+    unsigned int offset = 0;
+
+    // encode_decode by partitions
+    while (!feof(fIn))
+    {
+        size_t bytesRead = fread ((char*)buf, sizeof(uint8_t), BUF_SIZE, fIn);
+
+        // main XOR algorithm, look up the cipher tables
+        if (bytesRead > 0)
+        {
+            qmc_crypto_transform(buf, offset, bytesRead);
+            fwrite((char*)buf, sizeof(uint8_t), bytesRead, fOut);
+            offset += bytesRead;
+        }
+    }
+    printf("ok: %u bytes processed.\n", offset);
+
+    // close stream handler
+    fclose(fIn);
+    fclose(fOut);
+
+    // clear heap memory, return it back to kernel
+    memset(buf, 0, BUF_SIZE);
+    free(buf);
+    buf = NULL;
+
+    //return
+    return 0;
 }
